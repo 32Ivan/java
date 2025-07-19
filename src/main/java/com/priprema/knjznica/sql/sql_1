@@ -1,0 +1,214 @@
+
+1. kreiranje tablica
+
+    create table Kupac
+    (
+        ID int constraint PK_Kupac primary key identity,
+        Ime nvarchar(50),
+        Prezime nvarchar(50)
+    )
+
+    create table Narudzba
+    (
+        IDNarudzba int constraint PK_Narudzba primary key identity,
+        Datum DATETIME,
+        IDKupac int constraint FK_Kupac foreign key REFERENCES Kupac(ID)
+)
+--------------------------
+
+2. ubacivanje podataka u tablice
+
+    insert into Kupac(Ime ,Prezime) VALUES('pokusaj1','prvi')
+    insert into Kupac(Ime ,Prezime) VALUES('pokusaj2','drugi')
+    insert into Kupac(Ime ,Prezime) VALUES('pokusaj3','treci')
+
+    insert into Narudzba(Datum, IDKupac) VALUEs(getdate(), 1)
+    insert into Narudzba(Datum, IDKupac) VALUEs(getdate(), 1)
+    insert into Narudzba(Datum, IDKupac) VALUEs(getdate(), 2)
+    insert into Narudzba(Datum, IDKupac) VALUEs(getdate(), 3)
+    insert into Narudzba(Datum, IDKupac) VALUEs(getdate(), 2)
+
+    select * from Narudzba
+    select * from Kupac
+
+---------------------------
+
+3. kreiranje trigera nakon inserta
+
+    --dodavanje polja u tablicu
+    alter table Narudzba add Status nvarchar(50)
+
+    create trigger trg_Add_Status_Narudzba
+    on Narudzba
+    after INSERT
+    as
+    begin
+        update n
+        set Status ='Obrada'
+        from Narudzba as n
+        inner join inserted as i
+        on i.IDNarudzba = n.IDNarudzba
+    end
+---------------------------
+
+4.kreiranje procedure
+
+    create procedure prikazi_kupaca
+    as
+    begin
+        SELECT * from Kupac order by Prezime DESC
+    END
+
+    ---ovako je pokreces
+    exec prikazi_kupaca
+
+----------------------------
+5.kreiranje procedure sa parametrima ulaznim
+
+    create procedure prikazi_narudzbe_kupca
+        @ID int
+    AS
+    BEGIN
+        select * from Narudzba where IDKupac = @ID
+    END
+
+    --pokretanje
+    exec prikazi_narudzbe_kupca @ID = 2
+    ---------------------------
+
+6. kreiranje tablice i kreiranje i umjesto standardnog update radi se ovo
+
+    create table Proizvod
+    (
+        ID int constraint PK_Proizvod primary key identity,
+        Naziv nvarchar(50),
+        Cena money
+    )
+
+    create trigger trg_cena
+    on Proizvod
+    instead of UPDATE
+    AS
+    BEGIN
+        IF exists
+        (
+            select 1
+            from inserted i
+            join deleted d on i.ID = d.ID
+            where i.Cena < d.Cena
+        )
+        begin
+            RAISERROR('Smanjenje cijene nije dozvoljeno',16,1)
+            RETURN
+        END
+        else
+        BEGIN
+            update Proizvod
+            set Naziv = i.Naziv , Cena = i.Cena
+            from inserted i
+            where Proizvod.ID = i.ID
+        END
+
+    end
+
+------------------------------
+
+7. procedura sa ulaynim i izlaznim parametrima
+
+    create procedure proc_cena
+        @ID int ,
+        @Cena money OUTPUT
+    AS
+    BEGIN
+        select @Cena = Cena  from Proizvod where ID = @ID
+    END
+
+--izvrsavanje naredbe
+    declare @c money
+    exec proc_cena @ID =1, @Cena = @c OUTPUT
+
+    select @c as Cena
+
+----------------------------------
+
+8. inner join prikazuje sve iz obe tablice
+
+    SELECT k.Ime, k.Prezime, n.IDNarudzba, n.Datum
+    FROM Kupac k
+    INNER JOIN Narudzba n ON k.ID = n.IDKupac;
+
+----------------------------------
+
+9. left join prikazuje sve iz ljeve i ako ima iz desne ako ne onda to bude null
+
+    SELECT k.Ime, k.Prezime, n.IDNarudzba, n.Datum
+    FROM Kupac k
+    LEFT JOIN Narudzba n ON k.ID = n.IDKupac;
+
+----------------------------------
+
+10. right join prikazuje sve iz desne i ako ima iz lijeve ako ne onda to bude null
+
+    SELECT k.Ime, k.Prezime, n.IDNarudzba, n.Datum
+    FROM Kupac k
+    RIGHT JOIN Narudzba n ON k.ID = n.IDKupac;
+
+-----------------------------------
+
+11. update
+
+    UPDATE Kupac
+    SET Ime = 'NovoIme', Prezime = 'NovoPrezime'
+    WHERE ID = nešto;
+
+-----------------------------------
+
+12. select kao kolona
+
+    CREATE VIEW PregledNarudzbi AS
+    SELECT k.Ime, k.Prezime, n.Datum
+    FROM Kupac k
+    JOIN Narudzba n ON k.ID = n.IDKupac;
+
+----------------------------------
+
+13. grupiranje Prikazuje koliko narudžbi ima svaki kupac.
+
+    SELECT IDKupac, COUNT(*) AS BrojNarudzbi
+    FROM Narudzba
+    GROUP BY IDKupac;
+
+----------------------------------
+
+14. having nakon grupiranja prikaz kupaca koji imaju vise od jedne narudbe
+
+    SELECT IDKupac, COUNT(*) AS BrojNarudzbi
+    FROM Narudzba
+    GROUP BY IDKupac
+    HAVING COUNT(*) > 1;
+
+---------------------------------
+
+15. selectovi
+
+    -nema duplikata
+    SELECT DISTINCT Ime FROM Kupac;
+
+
+    SELECT * FROM Kupac WHERE Ime LIKE 'p%';
+    SELECT * FROM Kupac WHERE ID IN (1, 3, 5);
+    SELECT * FROM Narudzba WHERE Datum BETWEEN '2024-01-01' AND '2024-12-31';
+
+    SELECT * FROM Narudzba WHERE Status IS NULL;
+
+++++++++++++++++++++++++++++++++++++++++++++++++
+git
+
+    git init
+    git add README.md
+    git commit -m "first commit"
+    git branch -M main
+    git remote add origin https://github.com/32Ivan/java.git
+    git push -u origin main
+
+    git checkout -b feature1 origin/feature1
